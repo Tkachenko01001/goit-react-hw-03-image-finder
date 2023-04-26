@@ -36,6 +36,7 @@ class App extends Component {
         }
       this.setState(prevState => ({
         images: [...prevState.images, ...image.hits],
+        loadedImages: image.total
       }))
       })
       .catch(error => error)
@@ -43,6 +44,10 @@ class App extends Component {
         this.setState({isloading: false});
       });
     }
+  }
+
+  handleImages = (loadedImages) => {
+    this.setState({ loadedImages: loadedImages });
   }
 
   toggleModal = (e) => {
@@ -65,7 +70,7 @@ class App extends Component {
   handleFormSubmit = (name) => {
     this.setState({
       name: name,
-      images: [],
+      loadedImages: [],
       page: 1,
     });
   };
