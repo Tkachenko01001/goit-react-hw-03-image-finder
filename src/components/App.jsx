@@ -1,113 +1,115 @@
 import { Component } from "react";
+import { MutatingDots } from 'react-loader-spinner'
 import SearchBar from './SearchBar/SearchBar';
 import ImageGallery from './ImageGallery/ImageGallery';
 import Modal from './Modal/Modal'
 import LoadMore from "./LoadMore/LoadMore";
-import axios from "axios";
-import { URL_API, KEY_API } from "./ImageGallery/ImageGallery";
-import PropTypes from "prop-types";
+
+const KEY_API = "35689360-928715b1acfc50b960ec2f2b7";
+const URL_API = "https://pixabay.com/api/?";
 
 class App extends Component {
   state = {
     name: '',
     showModal: false,
     selectedImage: null,
-    loadedImages: [],
+    images: [],
     page: 1,
+    isloading: false,
   }
 
-  componentDidMount() {
-    window.addEventListener("keydown", this.handleKeyDown);
-  }
-
-  componentWillUnmount() {
-    window.removeEventListener("keydown", this.handleKeyDown);
-  }
-
-  handleKeyDown = (event) => {
-    if (event.key === "Escape") {
-      this.setState({ showModal: false });
+  componentDidUpdate(prevProps, prevState) {
+    if (
+      prevState.name !== this.state.name ||
+      prevState.page !== this.state.page
+    ) {
+      this.setState({isloading: true});
+  
+      fetch(
+        `${URL_API}q=${this.state.name}&page=${this.state.page}&key=${KEY_API}&images_type=photo&orientation=horizontal&per_page=12`
+      )
+      .then(response => response.json())
+  
+      .then(image => {
+        if (!image.total) {
+          return alert('К сожалению по Вашему запросу ничего не найдено');
+        }
+      this.setState(prevState => ({
+        images: [...prevState.images, ...image.hits],
+      }))
+      })
+      .catch(error => error)
+      .finally(() => {
+        this.setState({isloading: false});
+      });
     }
-  };
+  }
 
-  toggleModal = () => {
+  toggleModal = (e) => {
+
+    if (e.target.tagName === 'IMG' && this.state.showModal) {
+      return;
+    }
+
     this.setState(({ showModal }) => ({
-      showModal: !showModal,
-    }));
+        showModal: !showModal,
+      }));
+    };
+  
+  handleImageClick = (e, imageUrl) => {
+    this.setState({ selectedImage: imageUrl }, () => {
+      this.toggleModal(e);
+    });
   };
 
   handleFormSubmit = (name) => {
     this.setState({
       name: name,
-      loadedImages: [],
+      images: [],
       page: 1,
     });
   };
 
-  handleImageClick = (imageUrl) => {
-    this.setState({ selectedImage: imageUrl }, () => {
-      this.toggleModal();
-    });
-  };
-
-  handleLoadMoreClick = async () => {
-    const { name, page, loadedImages, searchId } = this.state;
-    try {
-      const response = await axios.get(
-        `${URL_API}q=${name}&page=${page + 1}&key=${KEY_API}&image_type=photo&orientation=horizontal&per_page=12`
-      );
-      const newImages = response.data.hits;
-      if (this.state.searchId === searchId) {
-        this.setState({
-          loadedImages: [...loadedImages, ...newImages],
-          page: page + 1,
-        });
-      }
-    } catch (error) {
-      console.log(error);
-    }
-  };
-
-  handleImages = (loadedImages) => {
-    this.setState({ loadedImages: loadedImages });
+  handleClickLoadMore = (page) => {
+    this.setState({page: page})
   }
 
+  handleEscapeKey = () => {
+    this.setState({ showModal: false });
+  };
+
   render() {
-    const { showModal, selectedImage, loadedImages, page } = this.state;
+    const { showModal, selectedImage, page, isloading, images } = this.state;
 
     return (
       <>
         <SearchBar submit={this.handleFormSubmit} />
-        <ImageGallery
-          name={this.state.name}
-          onClick={this.handleImageClick}
-          loadedImages={this.handleImages}
-          page={page}
-        />
-        {loadedImages.length > 0 && (
-          <LoadMore click={this.handleLoadMoreClick} page={page} />
+
+        {isloading ? <MutatingDots
+            height="100"
+            width="100"
+            color="#4fa94d"
+            secondaryColor="#4fa94d"
+            radius="12.5"
+            ariaLabel="mutating-dots-loading"
+            wrapperStyle={{}}
+            wrapperClass="spiner"
+            visible={true}
+          /> : 
+          <ImageGallery
+            onClick={this.handleImageClick}
+            page={page}
+            images={images}
+        /> }
+        {images.length > 0 && (
+          <LoadMore page={page} click={this.handleClickLoadMore} />
         )}
         {showModal && (
-          <Modal selectedImage={selectedImage} onCloseModal={this.toggleModal} />
+          <Modal selectedImage={selectedImage} onCloseModal={(e) => this.toggleModal(e)} onEscapeKey={this.handleEscapeKey} />
         )}
       </>
     );
   }
 }
-
-App.propTypes = {
-  name: PropTypes.string,
-  showModal: PropTypes.bool,
-  selectedImage: PropTypes.string,
-  loadedImages: PropTypes.arrayOf(
-    PropTypes.shape({
-      id: PropTypes.number.isRequired,
-      webformatURL: PropTypes.string.isRequired,
-      tags: PropTypes.string.isRequired,
-      largeImageURL: PropTypes.string.isRequired,
-    })
-  ),
-  page: PropTypes.number,
-};
 
 export default App;

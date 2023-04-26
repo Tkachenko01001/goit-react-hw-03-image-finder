@@ -3,6 +3,20 @@ import PropTypes from "prop-types";
 
 class Modal extends Component {
 
+  componentDidMount() {
+    window.addEventListener("keydown", this.handleKeyDown);
+  }
+
+  componentWillUnmount() {
+    window.removeEventListener("keydown", this.handleKeyDown);
+  }
+
+  handleKeyDown = (event) => {
+    if (event.key === "Escape") {
+      this.props.onEscapeKey();
+    }
+  };
+
     render() {
         return (<div className="overlay" onClick={this.props.onCloseModal}>
         <div className="modal">
